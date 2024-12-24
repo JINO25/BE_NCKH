@@ -1,6 +1,7 @@
 const firebaseStore = require('../models/firebase');
 const weather = require('../config/config_weather');
 const catchAsync = require('../middlewares/catchAsync');
+const { calculateWaterVolumes, handleWaterVolumeToday, handleWaterVolumeTodayForKcSelected } = require('../models/ETO_Calculator');
 
 exports.callApiWeather = async (req, res) => {
     await fetch(weather.url7days)
@@ -9,7 +10,7 @@ exports.callApiWeather = async (req, res) => {
             predictWeather7days(data)
         })
 
-    fetch(weather.urlToday)
+    await fetch(weather.urlToday)
         .then(res => res.json())
         .then(data => {
             dataWeatherCurrent(data)
@@ -30,7 +31,7 @@ function dataWeatherCurrent(data) {
     const icon = data.data[0].weather.icon
     const weatherTitle = data.data[0].weather.description;
 
-    const solarRad = data.data[0].solar_rad;
+    const solarRad = data.data[0].ghi;
     console.log(solarRad);
 
     const temp = data.data[0].temp;
@@ -64,24 +65,66 @@ function predictWeather7days(data) {
 exports.getHome = catchAsync(async (req, res) => {
     const dataWeatherToday = await firebaseStore.getWeatherToday();
     const dataWeather7days = await firebaseStore.getWeather7days();
+    const predictWaterVolume = await calculateWaterVolumes(500);
+    const dataFromWaterVolume = await firebaseStore.getDataFromWaterVolume();
+    // const user = req.user;
 
-    // console.log('user ', req.user);
+    // if (user) {
+    //     const rs = await firebaseStore.getAllGardens(user);
+    //     let data = rs.reverse();
+    //     console.log(data[0]);
 
-    res.status(200).json({
+
+    // }
+
+    if (req.query.kc) {
+        const kc = req.query.kc;
+        const predictWaterVolume = await calculateWaterVolumes(500, kc);
+        const dataWeather7days = await firebaseStore.getWeather7days();
+
+        const dataFromWaterVolume = await firebaseStore.getDataFromWaterVolume();
+
+        return res.status(200).json({
+            data: {
+                dataWeather7days,
+                predictWaterVolume,
+                dataFromWaterVolume
+            }
+        });
+    }
+
+
+    return res.status(200).json({
         status: 'success',
         user: res.locals.user,
         data: {
             dataWeatherToday,
-            dataWeather7days
+            dataWeather7days,
+            predictWaterVolume,
+            dataFromWaterVolume
         }
     });
 });
+
+exports.getDataForChar = catchAsync(async (req, res) => {
+    const kc = req.query.kc;
+    const predictWaterVolume = await calculateWaterVolumes(500, kc);
+    const dataFromWaterVolume = await firebaseStore.getDataFromWaterVolume();
+
+    res.status(200).json({
+        data: {
+            predictWaterVolume,
+            dataFromWaterVolume
+        }
+    });
+
+})
 
 exports.addDataWeatherToday = catchAsync(async (req, res) => {
     const { highTemp, lowTemp, temp, icon, humidity, solarRad, weatherTitle } = req.body;
     await firebaseStore.addDataForWeatherToday(highTemp, lowTemp, temp, icon, humidity, solarRad, weatherTitle);
 
-    res.status(200).json({
+    res.status(201).json({
         status: "success"
     })
 });
@@ -90,13 +133,14 @@ exports.addDataForWeather7days = catchAsync(async (req, res) => {
     const { highTemp7Days, lowTemp7Days, iconWeather, temp, datetime } = req.body;
     await firebaseStore.addDataForWeather7days(highTemp7Days, lowTemp7Days, iconWeather, temp, datetime);
 
-    res.status(200).json({
+    res.status(201).json({
         status: "success"
     })
 });
 
 exports.getDataWeatherToday = catchAsync(async (req, res) => {
     const data = await firebaseStore.getWeatherToday();
+
 
     res.status(200).json({
         status: 'success',
@@ -112,3 +156,140 @@ exports.getDataWeather7Days = catchAsync(async (req, res) => {
         data
     });
 });
+
+exports.addGardenInfo = catchAsync(async (req, res) => {
+    const { nameGarden, typeGarden, method, area, note, latitude, longitude } = req.body;
+    const user = req.user;
+
+    if (!user) {
+        return res.status(401).json({
+            status: 'fail',
+            message: "Vui lòng đăng nhập"
+        });
+    }
+
+    if (!nameGarden || !typeGarden || !method || !area || !latitude || !longitude) {
+        return res.status(400).json({
+            status: 'fail',
+            message: "Vui lòng nhập đủ thông tin"
+        });
+    }
+
+    await firebaseStore.addGarden(user, nameGarden, typeGarden, method, area, note, latitude, longitude);
+
+    return res.status(201).json({
+        status: 'success'
+    })
+
+});
+
+exports.getAllGardenInfo = catchAsync(async (req, res) => {
+    const user = req.user;
+
+    if (!user) {
+        return res.status(401).json({
+            status: 'fail',
+            message: "Vui lòng đăng nhập"
+        });
+    }
+
+    const data = await firebaseStore.getAllGardens(user);
+
+    return res.status(200).json({
+        status: 'success',
+        data
+    })
+
+})
+
+exports.getAllGardenInfoByName = catchAsync(async (req, res) => {
+    const user = req.user;
+    const { name } = req.params;
+    if (!user) {
+        return res.status(401).json({
+            status: 'fail',
+            message: "Vui lòng đăng nhập"
+        });
+    }
+
+    if (!name)
+        return res.status(400).json({
+            status: 'fail',
+            message: "Vui lòng nhập tên"
+        });
+
+    const data = await firebaseStore.getAllGardenByName(user, name);
+
+    return res.status(200).json({
+        status: 'success',
+        data
+    })
+
+})
+
+exports.updateGardenInfo = catchAsync(async (req, res) => {
+    const { nameGarden, typeGarden, method, area, note, latitude, longitude } = req.body;
+    const user = req.user;
+
+    const { name } = req.params;
+
+    if (!user) {
+        return res.status(401).json({
+            status: 'fail',
+            message: "Vui lòng đăng nhập"
+        });
+    }
+
+    const updates = {
+        "nameGarden": nameGarden,
+        "typeGarden": typeGarden,
+        "method": method,
+        "area": area,
+        "note": note,
+        "latitude": latitude,
+        "longitude": longitude
+    }
+
+    const rs = await firebaseStore.updateGarden(user, name, updates);
+
+    if (rs) {
+        return res.status(201).json({
+            status: 'success'
+        })
+    } else {
+        return res.status(400).json({
+            status: 'fail'
+        })
+    }
+});
+
+exports.deleteGardenInfo = catchAsync(async (req, res) => {
+    const user = req.user;
+
+    if (!user) {
+        return res.status(401).json({
+            status: 'fail',
+            message: "Vui lòng đăng nhập"
+        });
+    }
+
+    const { nameGarden } = req.body;
+
+    if (!nameGarden)
+        return res.status(400).json({
+            status: 'fail',
+            message: 'Vui lòng cung cấp tên vườn'
+        })
+
+    const rs = await firebaseStore.deleteGarden(user, nameGarden);
+
+    if (rs) {
+        return res.status(200).json({
+            status: 'success'
+        })
+    } else {
+        return res.status(400).json({
+            status: 'fail'
+        })
+    }
+})

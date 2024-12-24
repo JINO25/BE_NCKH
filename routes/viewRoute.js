@@ -15,5 +15,12 @@ router.post('/login', authController.login);
 router.post('/signup', authController.signup);
 router.get('/logout', authController.logout);
 
+router.get('/gardens', authController.isLogin, viewController.getAllGardenInfo)
+router.get('/garden/:name', authController.isLogin, viewController.getAllGardenInfoByName)
+
+router.post('/garden', authController.isLogin, viewController.addGardenInfo)
+router.patch('/garden/:name', authController.isLogin, viewController.updateGardenInfo)
+router.delete('/garden', authController.isLogin, viewController.deleteGardenInfo)
+
 
 module.exports = router;

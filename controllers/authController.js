@@ -34,7 +34,7 @@ const sendToken = (user, statusCode, res) => {
 }
 
 exports.isLogin = async (req, res, next) => {
-    console.log('cookie', req.cookies);
+    // console.log('cookie', req.cookies);
 
     if (req.cookies.jwtCookie) {
         try {

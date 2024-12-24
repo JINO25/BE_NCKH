@@ -5,6 +5,7 @@ const viewRouter = require('./routes/viewRoute');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
+const { handleWaterVolumeToday } = require('./models/ETO_Calculator');
 const app = express();
 dotenv.config({ path: './config.env' });
 // require('./config/mqtt');
@@ -14,7 +15,7 @@ dotenv.config({ path: './config.env' });
 if (process.env.ENV == 'development') {
     app.use(morgan('dev'));
 } else {
-    console.log('production');;
+    console.log('production');
 }
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -54,8 +55,6 @@ app.use(
                 'http://localhost:5500',
                 'ws://127.0.0.1:5500/',
                 `ws://localhost:5500/`,
-                'https://checkout.stripe.com',
-                'https://api.stripe.com',
                 'https://maps.googleapis.com'],
             scriptSrc: ["'self'", "'nonce-yourNonce'",
                 "'sha256-ajGjo5eD0JzFPdnpuutKT6Sb5gLu+Q9ru594rwJogGQ='",
@@ -72,6 +71,8 @@ app.use(
         }
     })
 );
+
+// handleWaterVolumeToday()
 
 app.use('/api/view', viewRouter)
 
