@@ -4,6 +4,7 @@ const firebaseConfig = require('../config/config_firebase');
 const weather = require('../config/config_weather');
 
 const callApiWeather = async () => {
+
     await fetch(weather.url7days)
         .then(res => res.json())
         .then(data => {
@@ -501,7 +502,7 @@ function calculateDailyETc(ETo, Kc) {
 };
 
 
-function calculateCurrentWaterVolume(ETc, areaInSquareMeters) {
+exports.calculateCurrentWaterVolume = (ETc, areaInSquareMeters) => {
     try {
         // Lấy chỉ số ETc của ngày hiện tại
 
@@ -523,10 +524,17 @@ function calculateCurrentWaterVolume(ETc, areaInSquareMeters) {
 
 const getSolar = async () => {
     let data = await firebaseStore.getWeatherToday();
+    const currentTime = new Date().getTime();
 
     //If data = null, then will call a new api to get weather for today
     if (data == null) {
         console.log('Call new api weather ');
+        await callApiWeather();
+        data = await firebaseStore.getWeatherToday();
+
+    } else if (currentTime - data.currentTime > 90 * 60 * 1000) {
+
+        console.log("Call Api after timing greater than 90 minutes");
         await callApiWeather();
         data = await firebaseStore.getWeatherToday();
     }
@@ -576,7 +584,7 @@ exports.handleWaterVolumeToday = async () => {
     console.log(`ETo là ${ETo} mm/hour`);
 
 
-    const areaInSquareMeters = 500;         //cứng
+    // const areaInSquareMeters = 500;         //cứng
     const ETc_kc05 = calculateDailyETc(ETo, 0.5);
     const ETc_kc085 = calculateDailyETc(ETo, 0.85);
     const ETc_kc06 = calculateDailyETc(ETo, 0.6);
@@ -584,13 +592,13 @@ exports.handleWaterVolumeToday = async () => {
     console.log(`ETc voi 0.85 là ${ETc_kc085} lít`);
     console.log(`ETc voi 0.6 là ${ETc_kc06} lít`);
 
-    const currentVolumeWithKc05 = calculateCurrentWaterVolume(ETc_kc05, areaInSquareMeters);
-    const currentVolumeWithKc085 = calculateCurrentWaterVolume(ETc_kc085, areaInSquareMeters);
-    const currentVolumeWithKc06 = calculateCurrentWaterVolume(ETc_kc06, areaInSquareMeters);
-    console.log(`Lượng nước với kc05 là ${currentVolumeWithKc05} lít`);
-    console.log(`Lượng nước với kc085 là ${currentVolumeWithKc085} lít`);
-    console.log(`Lượng nước với kc06 là ${currentVolumeWithKc06} lít`);
+    // const currentVolumeWithKc05 = this.calculateCurrentWaterVolume(ETc_kc05, areaInSquareMeters);
+    // const currentVolumeWithKc085 = this.calculateCurrentWaterVolume(ETc_kc085, areaInSquareMeters);
+    // const currentVolumeWithKc06 = this.calculateCurrentWaterVolume(ETc_kc06, areaInSquareMeters);
+    // console.log(`Lượng nước với kc05 là ${currentVolumeWithKc05} lít`);
+    // console.log(`Lượng nước với kc085 là ${currentVolumeWithKc085} lít`);
+    // console.log(`Lượng nước với kc06 là ${currentVolumeWithKc06} lít`);
 
-    await firebaseStore.addDataWaterVolume(dataSensor.humd, currentVolumeWithKc05, currentVolumeWithKc085, currentVolumeWithKc06, today.getTime());
+    await firebaseStore.addDataWaterVolume(dataSensor.humd, ETc_kc05, ETc_kc085, ETc_kc06, today.getTime());
 
 }

@@ -1,7 +1,7 @@
 const firebaseStore = require('../models/firebase');
 const weather = require('../config/config_weather');
 const catchAsync = require('../middlewares/catchAsync');
-const { calculateWaterVolumes, handleWaterVolumeToday, handleWaterVolumeTodayForKcSelected } = require('../models/ETO_Calculator');
+const { calculateWaterVolumes, handleWaterVolumeToday, handleWaterVolumeTodayForKcSelected, calculateCurrentWaterVolume } = require('../models/ETO_Calculator');
 
 exports.callApiWeather = async (req, res) => {
     await fetch(weather.url7days)
@@ -65,8 +65,84 @@ function predictWeather7days(data) {
 exports.getHome = catchAsync(async (req, res) => {
     const dataWeatherToday = await firebaseStore.getWeatherToday();
     const dataWeather7days = await firebaseStore.getWeather7days();
-    const predictWaterVolume = await calculateWaterVolumes(500);
     const dataFromWaterVolume = await firebaseStore.getDataFromWaterVolume();
+
+    let ETcOfWater = [];
+    let waterVolume = [];
+
+    // nếu có yêu cầu tính với diện tích và kc chỉ định
+    if (req.query.kc || req.query.area) {
+        const kc = req.query.kc;
+        const area = req.query.area;
+
+        switch (parseFloat(kc)) {
+            case 0:
+                ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
+                break;
+            case 0.5:
+                ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_05);
+                break;
+            case 0.85:
+                ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
+                break;
+            case 0.6:
+                ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_06);
+                break;
+            default:
+                ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
+                break;
+        }
+
+        //tính với diện tích và kc chỉ định
+        if (area != null) {
+
+            const predictWaterVolume = await calculateWaterVolumes(area, kc);
+
+            let humd = dataFromWaterVolume.map(doc => doc.humd);
+            let millisecond = dataFromWaterVolume.map(doc => doc.millisecond);
+
+            ETcOfWater.forEach((el) => {
+                waterVolume.push(calculateCurrentWaterVolume(el, area));
+            })
+
+            return res.status(200).json({
+                data: {
+                    dataWeather7days,
+                    predictWaterVolume,
+                    dataFromWaterVolume: {
+                        waterVolume,
+                        humd,
+                        millisecond
+                    }
+                }
+            });
+        }
+
+        //không có diện tích thì mặc định sẽ tính với diện tích là 500 m2
+        const predictWaterVolume = await calculateWaterVolumes(500, kc);
+        let humd = dataFromWaterVolume.map(doc => doc.humd);
+        let millisecond = dataFromWaterVolume.map(doc => doc.millisecond);
+
+        ETcOfWater.forEach((el) => {
+            waterVolume.push(calculateCurrentWaterVolume(el, 500));
+        })
+
+        return res.status(200).json({
+            data: {
+                dataWeather7days,
+                predictWaterVolume,
+                dataFromWaterVolume: {
+                    waterVolume,
+                    humd,
+                    millisecond
+                }
+            }
+        });
+    }
+
+    //mặc định tính với diện tích 500 và kc 0.85 nếu người dùng không yêu cầu
+    const predictWaterVolume = await calculateWaterVolumes(500);
+
     // const user = req.user;
 
     // if (user) {
@@ -77,22 +153,14 @@ exports.getHome = catchAsync(async (req, res) => {
 
     // }
 
-    if (req.query.kc) {
-        const kc = req.query.kc;
-        const predictWaterVolume = await calculateWaterVolumes(500, kc);
-        const dataWeather7days = await firebaseStore.getWeather7days();
+    let humd = dataFromWaterVolume.map(doc => doc.humd);
+    let millisecond = dataFromWaterVolume.map(doc => doc.millisecond);
 
-        const dataFromWaterVolume = await firebaseStore.getDataFromWaterVolume();
+    ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
 
-        return res.status(200).json({
-            data: {
-                dataWeather7days,
-                predictWaterVolume,
-                dataFromWaterVolume
-            }
-        });
-    }
-
+    ETcOfWater.forEach((el) => {
+        waterVolume.push(calculateCurrentWaterVolume(el, 500));
+    })
 
     return res.status(200).json({
         status: 'success',
@@ -101,7 +169,11 @@ exports.getHome = catchAsync(async (req, res) => {
             dataWeatherToday,
             dataWeather7days,
             predictWaterVolume,
-            dataFromWaterVolume
+            dataFromWaterVolume: {
+                waterVolume,
+                humd,
+                millisecond
+            }
         }
     });
 });
