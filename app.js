@@ -10,7 +10,7 @@ const app = express();
 dotenv.config({ path: './config.env' });
 // require('./config/mqtt');
 // require('./config/webSocket');
-// require('./controllers/webSocketController');
+require('./controllers/webSocketController');
 
 if (process.env.ENV == 'development') {
     app.use(morgan('dev'));
