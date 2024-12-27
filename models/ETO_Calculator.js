@@ -4,12 +4,18 @@ const firebaseConfig = require('../config/config_firebase');
 const weather = require('../config/config_weather');
 
 const callApiWeather = async () => {
+    const currentTime = new Date().toLocaleDateString();
 
-    await fetch(weather.url7days)
-        .then(res => res.json())
-        .then(data => {
-            predictWeather7days(data)
-        })
+    const rs = await checkWeather7days(currentTime);
+    console.log(rs);
+
+    if (rs == false) {
+        await fetch(weather.url7days)
+            .then(res => res.json())
+            .then(data => {
+                predictWeather7days(data)
+            })
+    }
 
     await fetch(weather.urlToday)
         .then(res => res.json())
@@ -24,6 +30,22 @@ let lowTemp7Days = [];
 let iconWeather = [];
 let temp = [];
 let datetime = [];
+let highTemp;
+let lowTemp;
+
+async function checkWeather7days(time) {
+    const data = await firebaseStore.getWeather7days();
+    if (data == null) return false;
+
+    if (data.timestamp == time) {
+        highTemp = data.maxTemp[0];
+        lowTemp = data.minTemp[0];
+        return true;
+    } else {
+        return false;
+    }
+
+}
 
 function dataWeatherCurrent(data) {
     const icon = data.data[0].weather.icon

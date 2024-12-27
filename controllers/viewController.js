@@ -4,11 +4,18 @@ const catchAsync = require('../middlewares/catchAsync');
 const { calculateWaterVolumes, handleWaterVolumeToday, handleWaterVolumeTodayForKcSelected, calculateCurrentWaterVolume } = require('../models/ETO_Calculator');
 
 exports.callApiWeather = async (req, res) => {
-    await fetch(weather.url7days)
-        .then(res => res.json())
-        .then(data => {
-            predictWeather7days(data)
-        })
+    const currentTime = new Date().toLocaleDateString();
+
+    const rs = await checkWeather7days(currentTime);
+    console.log(rs);
+
+    if (rs == false) {
+        await fetch(weather.url7days)
+            .then(res => res.json())
+            .then(data => {
+                predictWeather7days(data)
+            })
+    }
 
     await fetch(weather.urlToday)
         .then(res => res.json())
@@ -26,6 +33,22 @@ let lowTemp7Days = [];
 let iconWeather = [];
 let temp = [];
 let datetime = [];
+let highTemp;
+let lowTemp;
+
+async function checkWeather7days(time) {
+    const data = await firebaseStore.getWeather7days();
+    if (data == null) return false;
+
+    if (data.timestamp == time) {
+        highTemp = data.maxTemp[0];
+        lowTemp = data.minTemp[0];
+        return true;
+    } else {
+        return false;
+    }
+
+}
 
 function dataWeatherCurrent(data) {
     const icon = data.data[0].weather.icon
@@ -75,6 +98,9 @@ exports.getHome = catchAsync(async (req, res) => {
         const kc = req.query.kc;
         const area = req.query.area;
 
+        console.log(area);
+
+
         switch (parseFloat(kc)) {
             case 0:
                 ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
@@ -94,7 +120,7 @@ exports.getHome = catchAsync(async (req, res) => {
         }
 
         //tính với diện tích và kc chỉ định
-        if (area != null) {
+        if (area != null && area != '' && area != ' ') {
 
             const predictWaterVolume = await calculateWaterVolumes(area, kc);
 
