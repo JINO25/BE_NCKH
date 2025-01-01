@@ -89,7 +89,7 @@ exports.getDataFromSensorData = async () => {
         data.push(doc.data())
     })
 
-    return data.reverse()
+    return data;
 }
 
 exports.getDataFromWaterVolume = async () => {

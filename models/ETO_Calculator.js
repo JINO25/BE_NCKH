@@ -586,6 +586,8 @@ exports.handleWaterVolumeToday = async () => {
     // Các tham số tính bức xạ
     const phi = 10.094424 * (Math.PI / 180); // Vĩ độ (can tho 10 do) (Rad) //cứng 
     let t1 = hour - 0.5;
+    // console.log(dataSensor)
+    console.log(t1);
 
     //thay bằng giờ tưới 
     const Lm16 = 360 - 105.671879;  // Kinh độ ở phía tây Greenwich        //cứng 
