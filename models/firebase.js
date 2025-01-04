@@ -1,11 +1,10 @@
 const firebaseStore = require('../config/config_firebase');
 const { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, getDocs, getDoc, where, doc, updateDoc, deleteDoc } = require('firebase/firestore');
-const date = new Date();
-let today = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+// const date = new Date();
+// const today = new Date(date.getTime() + 7 * 60 * 60 * 1000);
 
-let current = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+// let current = new Date(date.getTime() + 7 * 60 * 60 * 1000);
 
-console.log('today in firebase: ', today, current);
 
 
 exports.addUser = async (name, email) => {
@@ -45,6 +44,10 @@ exports.findUserByID = async (id) => {
 }
 
 exports.addData = async (currentTime, millisecond, temp, humd, humidityInSideHouse) => {
+    const date = new Date();
+    const today = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+    console.log('today in firebase: ', today);
+
     await addDoc(collection(firebaseStore.db, "sensor"), {
         temp,
         humd,
@@ -56,6 +59,8 @@ exports.addData = async (currentTime, millisecond, temp, humd, humidityInSideHou
 }
 
 exports.addDataWaterVolume = async (humd, waterVolume05, waterVolume085, waterVolume06, millisecond) => {
+    const date = new Date();
+    const today = new Date(date.getTime() + 7 * 60 * 60 * 1000);
     await addDoc(collection(firebaseStore.db, "waterVolume"), {
         humd,
         waterVolume: {
@@ -70,7 +75,9 @@ exports.addDataWaterVolume = async (humd, waterVolume05, waterVolume085, waterVo
 
 
 exports.listenToSensorData = (callback) => {
-    // const current = new Date();
+    const date = new Date();
+    const current = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+
     const sensorRef = collection(firebaseStore.db, "waterVolume");
 
     const q = query(sensorRef, where('timestamp', '==', current.toDateString()), orderBy('millisecond', 'desc'));
@@ -84,7 +91,8 @@ exports.listenToSensorData = (callback) => {
 }
 
 exports.getDataFromSensorData = async () => {
-    // const current = new Date();
+    const date = new Date();
+    const current = new Date(date.getTime() + 7 * 60 * 60 * 1000);
     console.log('current time in firebase: ', current);
 
     const sensorRef = collection(firebaseStore.db, "sensor");
@@ -100,7 +108,8 @@ exports.getDataFromSensorData = async () => {
 }
 
 exports.getDataFromWaterVolume = async () => {
-    // const current = new Date();
+    const date = new Date();
+    const current = new Date(date.getTime() + 7 * 60 * 60 * 1000);
     const sensorRef = collection(firebaseStore.db, "waterVolume");
 
     const q = query(sensorRef, where('timestamp', '==', current.toDateString()), orderBy('millisecond', 'desc'));
