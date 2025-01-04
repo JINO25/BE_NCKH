@@ -13,8 +13,8 @@ client.on('message', async function (topic, message) {
     let humidity = split[3];
     let humidityInSideHouse = split[4];
 
-    const date = new Date(parseInt(time, 10) * 1000).toString();
-    // const date = new Date(parseInt(time, 10) * 1000);
+    // const date = new Date(parseInt(time, 10) * 1000).toString();
+    const date = new Date(parseInt(time, 10) * 1000);
 
     const millisecond = time * 1000;
 
@@ -33,8 +33,10 @@ client.on('message', async function (topic, message) {
     const VN = new Intl.DateTimeFormat('en-US', options).format(date);
 
 
-    const today = date.substring(16, date.lastIndexOf("GMT"));
-    // const today = VN.substring(VN.lastIndexOf(","), VN.lastIndexOf("GMT"));
+    // const today = date.substring(16, date.lastIndexOf("GMT"));
+    const today = VN.substring(VN.lastIndexOf(",") + 1, VN.lastIndexOf("GMT")).trim();
+    console.log(today);
+
 
     if (time === lastTimestamp) {
         return;
