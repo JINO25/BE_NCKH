@@ -12,17 +12,30 @@ client.on('message', async function (topic, message) {
     let temp = split[2];
     let humidity = split[3];
     let humidityInSideHouse = split[4];
-    const date = new Date(parseInt(time, 10) * 1000).toString();
+
+    // const date = new Date(parseInt(time, 10) * 1000).toString();
+    const date = new Date(parseInt(time, 10) * 1000);
+
     const millisecond = time * 1000;
 
-    // console.log(humidityInSideHouse);
+    const options = {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+    };
+    const VN = new Intl.DateTimeFormat('en-US', options).format(date);
 
 
-    const today = date.substring(16, date.lastIndexOf("GMT"));
-    // console.log(temp, humidity, humidityInSideHouse);
+    const today = VN.substring(16, VN.lastIndexOf("GMT"));
 
     if (time === lastTimestamp) {
-        return getDataFromSensorData(sendDataToClient);
+        return;
     }
 
     // getDataFromSensorData(sendDataToClient);
