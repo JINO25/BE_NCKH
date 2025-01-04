@@ -13,12 +13,11 @@ const client = mqtt.connect(process.env.brokenURL, options);
 const topic = process.env.topic;
 
 client.on('connect', function () {
-    console.log('Connected')
     // Subscribe to a topic
     client.subscribe(topic, function (err) {
-        if (!err) {
+        if (err) {
             // Publish a message to a topic
-            console.log('Hello');
+            console.log(err);
 
         }
     })
