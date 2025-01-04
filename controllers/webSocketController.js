@@ -27,12 +27,16 @@ client.on('message', async function (topic, message) {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZoneName: 'short'
+        timeZoneName: 'short',
+        hourCycle: 'h23'
     };
     const VN = new Intl.DateTimeFormat('en-US', options).format(date);
 
 
     const today = VN.substring(16, VN.lastIndexOf("GMT"));
+    // const today = VN.substring(VN.lastIndexOf(","), VN.lastIndexOf("GMT"));
+    console.log(VN, today);
+
 
     if (time === lastTimestamp) {
         return;
@@ -44,8 +48,8 @@ client.on('message', async function (topic, message) {
     console.log(`Dữ liệu mới: ${temp}, ${humidity}, ${humidityInSideHouse}`);
 
     // add data to firebase
-    await addData(today, millisecond, temp, humidity, humidityInSideHouse);
-    await handleWaterVolumeToday();
+    // await addData(today, millisecond, temp, humidity, humidityInSideHouse);
+    // await handleWaterVolumeToday();
     listenToSensorData(sendDataToClient);
 });
 
