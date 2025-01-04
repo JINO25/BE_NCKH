@@ -554,7 +554,7 @@ const getSolar = async () => {
         await callApiWeather();
         data = await firebaseStore.getWeatherToday();
 
-    } else if (currentTime - data.currentTime >= 60 * 60 * 1000) {
+    } else if (currentTime - data.currentTime > 60 * 60 * 1000) {
 
         console.log("Call Api after timing greater than 60 minutes");
         await callApiWeather();
@@ -562,7 +562,7 @@ const getSolar = async () => {
     }
 
     const solar = WatToJun(data.solar);
-    console.log(solar);
+    console.log('solar: ', solar);
 
     return solar;
 

@@ -137,7 +137,7 @@ exports.addDataForWeather7days = async (maxTemp, minTemp, icon, temp, date) => {
         icon,
         temp,
         date,
-        currentTime: current,
+        currentTime: current.getTime(),
         timestamp: today.toLocaleDateString()
     });
 }
@@ -159,7 +159,7 @@ exports.addDataForWeatherToday = async (maxTemp, minTemp, temp, icon, humidity, 
         humidity,
         solar,
         titleOfWeather,
-        currentTime: current,
+        currentTime: current.getTime(),
         timestamp: today.toLocaleDateString()
     });
 
