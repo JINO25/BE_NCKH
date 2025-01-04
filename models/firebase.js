@@ -83,6 +83,8 @@ exports.listenToSensorData = (callback) => {
 
 exports.getDataFromSensorData = async () => {
     const current = new Date();
+    console.log('current time in firebase: ', current);
+
     const sensorRef = collection(firebaseStore.db, "sensor");
 
     const q = query(sensorRef, where('timestamp', '==', current.toDateString()), orderBy('millisecond', 'desc'));
