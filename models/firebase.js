@@ -159,7 +159,8 @@ exports.addDataForWeatherToday = async (maxTemp, minTemp, temp, icon, humidity, 
 }
 
 exports.getWeatherToday = async () => {
-
+    const date = new Date();
+    const today = new Date(date.getTime() + 7 * 60 * 60 * 1000);
     let data;
 
     const q = query(collection(firebaseStore.db, "weatherToday"), where('timestamp', '==', today.toLocaleDateString().toString()), orderBy("currentTime", "desc"), limit(1));
@@ -181,6 +182,8 @@ exports.getWeatherToday = async () => {
 exports.getWeather7days = async () => {
 
     let data;
+    const date = new Date();
+    const today = new Date(date.getTime() + 7 * 60 * 60 * 1000);
 
     const q = query(collection(firebaseStore.db, "weather7days"), where('timestamp', '==', today.toLocaleDateString().toString()), orderBy("currentTime", "desc"), limit(1));
     const querySnapshot = await getDocs(q);
