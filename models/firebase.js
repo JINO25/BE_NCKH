@@ -3,9 +3,6 @@ const { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, 
 const date = new Date();
 const today = new Date(date.getTime());
 
-console.log(today);
-
-
 exports.addUser = async (name, email) => {
     const doc = await addDoc(collection(firebaseStore.db, 'user'), {
         name,
