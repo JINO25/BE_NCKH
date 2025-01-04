@@ -125,6 +125,8 @@ exports.getDataFromWaterVolume = async () => {
 
 exports.addDataForWeather7days = async (maxTemp, minTemp, icon, temp, date) => {
     const day = new Date();
+    const today = new Date(day.getTime() + 7 * 60 * 60 * 1000);
+
     const current = new Date(day.getTime() + 7 * 60 * 60 * 1000);
     console.log(current);
 
@@ -143,8 +145,10 @@ exports.addDataForWeather7days = async (maxTemp, minTemp, icon, temp, date) => {
 
 exports.addDataForWeatherToday = async (maxTemp, minTemp, temp, icon, humidity, solar, titleOfWeather) => {
 
-    const date = new Date();
-    const current = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+    const day = new Date();
+    const today = new Date(day.getTime() + 7 * 60 * 60 * 1000);
+
+    const current = new Date(day.getTime() + 7 * 60 * 60 * 1000);
     console.log(current);
 
     await addDoc(collection(firebaseStore.db, "weatherToday"), {
