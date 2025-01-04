@@ -39,8 +39,10 @@ exports.findUserByID = async (id) => {
     }
 }
 
-exports.addData = async (currentTime, millisecond, temp, humd, humidityInSideHouse) => {
+//add data for sensor_data 
+exports.addData = async (topic, currentTime, millisecond, temp, humd, humidityInSideHouse) => {
     await addDoc(collection(firebaseStore.db, "sensor"), {
+        topic,
         temp,
         humd,
         humidityInSideHouse,
@@ -50,8 +52,10 @@ exports.addData = async (currentTime, millisecond, temp, humd, humidityInSideHou
     });
 }
 
-exports.addDataWaterVolume = async (humd, waterVolume05, waterVolume085, waterVolume06, millisecond) => {
+//add data for water volume which calculated from Etc
+exports.addDataWaterVolume = async (topic, humd, waterVolume05, waterVolume085, waterVolume06, millisecond) => {
     await addDoc(collection(firebaseStore.db, "waterVolume"), {
+        topic,
         humd,
         waterVolume: {
             "kc_05": waterVolume05,
@@ -78,11 +82,14 @@ exports.listenToSensorData = (callback) => {
     });
 }
 
-exports.getDataFromSensorData = async () => {
+exports.getDataFromSensorData = async (topic) => {
     const current = new Date();
     const sensorRef = collection(firebaseStore.db, "sensor");
 
-    const q = query(sensorRef, where('timestamp', '==', current.toDateString()), orderBy('millisecond', 'desc'));
+    const q = query(sensorRef,
+        where('timestamp', '==', current.toDateString()),
+        where('topic', '==', topic),
+        orderBy('millisecond', 'desc'));
     let data = [];
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach(doc => {
@@ -107,7 +114,7 @@ exports.getDataFromWaterVolume = async () => {
 }
 
 
-exports.addDataForWeather7days = async (maxTemp, minTemp, icon, temp, date) => {
+exports.addDataForWeather7days = async (maxTemp, minTemp, icon, temp, date, topic) => {
     const currentTime = new Date().getTime();
     console.log(currentTime);
 
@@ -118,13 +125,14 @@ exports.addDataForWeather7days = async (maxTemp, minTemp, icon, temp, date) => {
         icon,
         temp,
         date,
+        topic,
         currentTime: currentTime,
         timestamp: today.toLocaleDateString()
     });
 }
 
 
-exports.addDataForWeatherToday = async (maxTemp, minTemp, temp, icon, humidity, solar, titleOfWeather) => {
+exports.addDataForWeatherToday = async (maxTemp, minTemp, temp, icon, humidity, solar, titleOfWeather, topic) => {
     const currentTime = new Date().getTime();
     console.log(currentTime);
 
@@ -136,17 +144,22 @@ exports.addDataForWeatherToday = async (maxTemp, minTemp, temp, icon, humidity, 
         humidity,
         solar,
         titleOfWeather,
+        topic,
         currentTime: currentTime,
         timestamp: today.toLocaleDateString()
     });
 
 }
 
-exports.getWeatherToday = async () => {
+exports.getWeatherToday = async (topic) => {
 
     let data;
 
-    const q = query(collection(firebaseStore.db, "weatherToday"), where('timestamp', '==', today.toLocaleDateString().toString()), orderBy("currentTime", "desc"), limit(1));
+    const q = query(collection(firebaseStore.db, "weatherToday"),
+        where('timestamp', '==', today.toLocaleDateString().toString()),
+        where('topic', '==', topic),
+        orderBy("currentTime", "desc"),
+        limit(1));
 
     const querySnapshot = await getDocs(q);
 
@@ -162,11 +175,15 @@ exports.getWeatherToday = async () => {
 }
 
 
-exports.getWeather7days = async () => {
+exports.getWeather7days = async (topic) => {
 
     let data;
 
-    const q = query(collection(firebaseStore.db, "weather7days"), where('timestamp', '==', today.toLocaleDateString().toString()), orderBy("currentTime", "desc"), limit(1));
+    const q = query(collection(firebaseStore.db, "weather7days"),
+        where('timestamp', '==', today.toLocaleDateString().toString()),
+        where('topic', '==', topic),
+        orderBy("currentTime", "desc"),
+        limit(1));
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((doc) => {
         data = doc.data();
@@ -178,7 +195,7 @@ exports.getWeather7days = async () => {
 
 }
 
-exports.addGarden = async (user, nameGarden, typeGarden, method, area, note, latitude, longitude) => {
+exports.addGarden = async (user, nameGarden, typeGarden, method, area, note, latitude, longitude, topicSensor) => {
 
     const userID = await this.findUser(user.email)
 
@@ -191,6 +208,7 @@ exports.addGarden = async (user, nameGarden, typeGarden, method, area, note, lat
             area,
             latitude,
             longitude,
+            topic: topicSensor,
             timestamp: serverTimestamp()
         })
     } else {
@@ -203,6 +221,7 @@ exports.addGarden = async (user, nameGarden, typeGarden, method, area, note, lat
             note,
             latitude,
             longitude,
+            topic: topicSensor,
             timestamp: serverTimestamp()
         })
     }
@@ -212,7 +231,7 @@ exports.getAllGardens = async (user) => {
     const userID = await this.findUser(user.email)
     let data = [];
 
-    const q = query(collection(firebaseStore.db, "garden"), where("user", "==", userID.id), orderBy("timestamp", "desc"));
+    const q = query(collection(firebaseStore.db, "garden"), where("user", "==", userID.id), orderBy("timestamp", "asc"));
     // const q = query(collection(firebaseStore.db, "garden"), where("user", "==", userID.id));
 
     const querySnapshot = await getDocs(q);
@@ -231,6 +250,26 @@ exports.getAllGardenByName = async (user, name) => {
     let data = [];
 
     const q = query(collection(firebaseStore.db, "garden"), where("user", "==", userID.id), where("nameGarden", "==", name));
+
+    const querySnapshot = await getDocs(q);
+
+    querySnapshot.forEach((doc) => {
+        console.log(doc.id);
+
+        data.push(doc.data())
+    });
+
+    (data == null) ? data = null : data = data;
+
+    return data;
+}
+
+exports.getGardenByTopic = async (topic) => {
+
+    let data = [];
+
+    const q = query(collection(firebaseStore.db, "garden"),
+        where("topic", "==", topic));
 
     const querySnapshot = await getDocs(q);
 

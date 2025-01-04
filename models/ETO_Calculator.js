@@ -3,24 +3,42 @@ const firebaseStore = require('../models/firebase');
 const firebaseConfig = require('../config/config_firebase');
 const weather = require('../config/config_weather');
 
-const callApiWeather = async () => {
+const dotenv = require('dotenv');
+dotenv.config({ path: './config.env' });
+const apiKey = process.env.apiKeyWeather;
+
+const callApiWeather = async (topic, lon, lat) => {
     const currentTime = new Date().toLocaleDateString();
 
-    const rs = await checkWeather7days(currentTime);
+    const rs = await checkWeather7days(currentTime, topic);
     console.log(rs);
 
+    // if (rs == false) {
+    //     await fetch(weather.url7days)
+    //         .then(res => res.json())
+    //         .then(data => {
+    //             predictWeather7days(data, topic);
+    //         })
+    // }
+
+    // await fetch(weather.urlToday)
+    //     .then(res => res.json())
+    //     .then(data => {
+    //         dataWeatherCurrent(data, topic);
+    //     })
+
     if (rs == false) {
-        await fetch(weather.url7days)
+        await fetch(`https://api.weatherbit.io/v2.0/forecast/daily?lat=${lat}&lon=${lon}&key=${apiKey}`)
             .then(res => res.json())
             .then(data => {
-                predictWeather7days(data)
+                predictWeather7days(data, topic);
             })
     }
 
-    await fetch(weather.urlToday)
+    await fetch(`https://api.weatherbit.io/v2.0/current?lat=${lat}&lon=${lon}&key=${apiKey}`)
         .then(res => res.json())
         .then(data => {
-            dataWeatherCurrent(data)
+            dataWeatherCurrent(data, topic);
         })
 
 }
@@ -33,8 +51,8 @@ let datetime = [];
 let highTemp;
 let lowTemp;
 
-async function checkWeather7days(time) {
-    const data = await firebaseStore.getWeather7days();
+async function checkWeather7days(time, topic) {
+    const data = await firebaseStore.getWeather7days(topic);
     if (data == null) return false;
 
     if (data.timestamp == time) {
@@ -47,7 +65,7 @@ async function checkWeather7days(time) {
 
 }
 
-function dataWeatherCurrent(data) {
+function dataWeatherCurrent(data, topic) {
     const icon = data.data[0].weather.icon
     const weatherTitle = data.data[0].weather.description;
 
@@ -57,11 +75,10 @@ function dataWeatherCurrent(data) {
     const temp = data.data[0].temp;
     const humidity = data.data[0].rh;
 
-    firebaseStore.addDataForWeatherToday(highTemp, lowTemp, temp, icon, humidity, solarRad, weatherTitle);
+    firebaseStore.addDataForWeatherToday(highTemp, lowTemp, temp, icon, humidity, solarRad, weatherTitle, topic);
 }
 
-function predictWeather7days(data) {
-
+function predictWeather7days(data, topic) {
     highTemp = data.data[0].app_max_temp;
     lowTemp = data.data[0].app_min_temp;
 
@@ -79,7 +96,7 @@ function predictWeather7days(data) {
         const t = data.data[i].temp;
         temp.push(t);
     }
-    firebaseStore.addDataForWeather7days(highTemp7Days, lowTemp7Days, iconWeather, temp, datetime);
+    firebaseStore.addDataForWeather7days(highTemp7Days, lowTemp7Days, iconWeather, temp, datetime, topic);
 }
 
 const RaMatrix = [
@@ -99,8 +116,8 @@ const calculateETo7days = (maxTemp, minTemp, month) => {
 };
 
 
-exports.getWeatherETo7days = async () => {
-    const weatherData = await firebaseStore.getWeather7days();
+exports.getWeatherETo7days = async (topic) => {
+    const weatherData = await firebaseStore.getWeather7days(topic);
     if (!weatherData || !weatherData.maxTemp || !weatherData.minTemp) {
         console.error('Không có dữ liệu thời tiết hợp lệ!');
         return;
@@ -121,16 +138,20 @@ exports.getWeatherETo7days = async () => {
     return EToResults;
 };
 
-exports.calculateETc = async (kc) => {
+exports.calculateETc = async (kc, topic) => {
     if (!kc || kc == 0) kc = 0.85;
     try {
-        let EToList = await this.getWeatherETo7days();
+        let EToList = await this.getWeatherETo7days(topic);
+        let lat, lon;
 
         if (!EToList || !Array.isArray(EToList)) {
             // throw new Error('Danh sách ETo không hợp lệ hoặc trống!');
             console.log('call api để nhận dữ liệu mới');
-            await callApiWeather();
-            ETcList = await calculateETc();
+            let dataGarden = await getDataFromGardens(topic);
+            lat = dataGarden.latitude;
+            lon = dataGarden.longitude;
+            await callApiWeather(topic, lon, lat);
+            ETcList = await calculateETc(kc, topic);
         }
 
         const ETcList = EToList.map(ETo => ETo * kc);
@@ -142,10 +163,10 @@ exports.calculateETc = async (kc) => {
     }
 };
 
-exports.calculateWaterVolumes = async (areaInSquareMeters, kc) => {
+exports.calculateWaterVolumes = async (areaInSquareMeters, kc, topic) => {
 
     try {
-        const ETcList = await this.calculateETc(kc);
+        const ETcList = await this.calculateETc(kc, topic);
 
         if (!ETcList || !Array.isArray(ETcList)) {
             throw new Error('Danh sách ETc không hợp lệ hoặc trống!');
@@ -544,21 +565,33 @@ exports.calculateCurrentWaterVolume = (ETc, areaInSquareMeters) => {
     }
 };
 
-const getSolar = async () => {
-    let data = await firebaseStore.getWeatherToday();
+const getSolar = async (topic) => {
+    let data = await firebaseStore.getWeatherToday(topic);
     const currentTime = new Date().getTime();
-
+    let lat, lon;
     //If data = null, then will call a new api to get weather for today
     if (data == null) {
+        let dataGarden = await getDataFromGardens(topic);
+
+        if (dataGarden == null) {
+            return null;
+        }
+
+        lat = dataGarden.latitude;
+        lon = dataGarden.longitude;
+
         console.log('Call new api weather ');
-        await callApiWeather();
-        data = await firebaseStore.getWeatherToday();
+        await callApiWeather(topic, lon, lat);
+        data = await firebaseStore.getWeatherToday(topic);
 
     } else if (currentTime - data.currentTime > 90 * 60 * 1000) {
+        let dataGarden = await getDataFromGardens(topic);
+        lat = dataGarden.latitude;
+        lon = dataGarden.longitude;
 
         console.log("Call Api after timing greater than 90 minutes");
-        await callApiWeather();
-        data = await firebaseStore.getWeatherToday();
+        await callApiWeather(topic, lon, lat);
+        data = await firebaseStore.getWeatherToday(topic);
     }
 
     const solar = WatToJun(data.solar);
@@ -568,14 +601,21 @@ const getSolar = async () => {
 
 }
 
-const getDataFromSensor = async () => {
-    const data = await firebaseStore.getDataFromSensorData();
+const getDataFromSensor = async (topic) => {
+    const data = await firebaseStore.getDataFromSensorData(topic);
 
     return data[0];
 }
 
-exports.handleWaterVolumeToday = async () => {
-    let dataSensor = await getDataFromSensor();
+const getDataFromGardens = async (topic) => {
+    const data = await firebaseStore.getGardenByTopic(topic);
+
+    return data[0];
+}
+
+exports.handleWaterVolumeToday = async (topic) => {
+
+    let dataSensor = await getDataFromSensor(topic);
     // Tính các tham số cần thiết
     const today = new Date(); // Ngày hiện tại
 
@@ -583,46 +623,48 @@ exports.handleWaterVolumeToday = async () => {
 
     const hour = time.substring(0, time.indexOf(':'));
 
-    // Các tham số tính bức xạ
+    // // Các tham số tính bức xạ
     const phi = 10.094424 * (Math.PI / 180); // Vĩ độ (can tho 10 do) (Rad) //cứng 
     let t1 = hour - 0.5;
-    // console.log(dataSensor)
+    // // console.log(dataSensor)
     console.log(t1);
 
-    //thay bằng giờ tưới 
+    // //thay bằng giờ tưới 
     const Lm16 = 360 - 105.671879;  // Kinh độ ở phía tây Greenwich        //cứng 
 
-    // Tính bức xạ ngoài Trái Đất
+    // // Tính bức xạ ngoài Trái Đất
     const Ra = calculateSolarRadiation(phi, today, t1, Lm16);
-    console.log(`Bức xạ ngoài trái đất R_a là ${Ra.toFixed(2)} MJ m-2 hour-1`);
+    // console.log(`Bức xạ ngoài trái đất R_a là ${Ra.toFixed(2)} MJ m-2 hour-1`);
 
-    // Các tham số còn lại
-    const R_s = await getSolar();
+    // // Các tham số còn lại
+    const R_s = await getSolar(topic);
+
+    if (R_s == null) return;
+
     let RH_hr = parseFloat(dataSensor.humidityInSideHouse);//độ ẩm trung bình sensor             //thay bằng độ ẩm trung bình 1 giờ sensor
     let T_hr = parseFloat(dataSensor.temp);//                                  //thay nhiệt dộ trung bình 1 giờ sensor
     const u_2 = 1;//cứng             
     const Z = 0;         //cứng
 
-    // Tính ETo
+    // // Tính ETo
     const ETo = calculateETo(Ra, R_s, RH_hr, T_hr, u_2, Z);
     console.log(`ETo là ${ETo} mm/hour`);
 
 
-    // const areaInSquareMeters = 500;         //cứng
     const ETc_kc05 = calculateDailyETc(ETo, 0.5);
     const ETc_kc085 = calculateDailyETc(ETo, 0.85);
     const ETc_kc06 = calculateDailyETc(ETo, 0.6);
-    console.log(`ETc voi 0.5 là ${ETc_kc05} lít`);
-    console.log(`ETc voi 0.85 là ${ETc_kc085} lít`);
-    console.log(`ETc voi 0.6 là ${ETc_kc06} lít`);
+    // console.log(`ETc voi 0.5 là ${ETc_kc05} lít`);
+    // console.log(`ETc voi 0.85 là ${ETc_kc085} lít`);
+    // console.log(`ETc voi 0.6 là ${ETc_kc06} lít`);
 
+    await firebaseStore.addDataWaterVolume(topic, dataSensor.humd, ETc_kc05, ETc_kc085, ETc_kc06, today.getTime());
+
+    // const areaInSquareMeters = 500;         //cứng
     // const currentVolumeWithKc05 = this.calculateCurrentWaterVolume(ETc_kc05, areaInSquareMeters);
     // const currentVolumeWithKc085 = this.calculateCurrentWaterVolume(ETc_kc085, areaInSquareMeters);
     // const currentVolumeWithKc06 = this.calculateCurrentWaterVolume(ETc_kc06, areaInSquareMeters);
     // console.log(`Lượng nước với kc05 là ${currentVolumeWithKc05} lít`);
     // console.log(`Lượng nước với kc085 là ${currentVolumeWithKc085} lít`);
     // console.log(`Lượng nước với kc06 là ${currentVolumeWithKc06} lít`);
-
-    await firebaseStore.addDataWaterVolume(dataSensor.humd, ETc_kc05, ETc_kc085, ETc_kc06, today.getTime());
-
 }

@@ -6,7 +6,7 @@ const router = express.Router();
 router.get('/home', authController.isLogin, viewController.getHome);
 router.get('/weatherToday', viewController.getDataWeatherToday);
 router.get('/weather7days', viewController.getDataWeather7Days);
-router.post('/callApiWeather', viewController.callApiWeather);
+router.post('/callApiWeather', authController.isLogin, viewController.callApiWeather);
 
 router.post('/weatherToday', viewController.addDataWeatherToday);
 router.post('/weather7days', viewController.addDataForWeather7days);

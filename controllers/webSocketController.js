@@ -15,24 +15,22 @@ client.on('message', async function (topic, message) {
     const date = new Date(parseInt(time, 10) * 1000).toString();
     const millisecond = time * 1000;
 
-    // console.log(humidityInSideHouse);
+    console.log(topic);
 
 
     const today = date.substring(16, date.lastIndexOf("GMT"));
     // console.log(temp, humidity, humidityInSideHouse);
 
     if (time === lastTimestamp) {
-        return getDataFromSensorData(sendDataToClient);
+        return;
     }
 
-    // getDataFromSensorData(sendDataToClient);
-
     lastTimestamp = time;
-    console.log(`Dữ liệu mới: ${temp}, ${humidity}, ${humidityInSideHouse}`);
+    console.log(`Dữ liệu mới cua topic ${topic}: ${temp}, ${humidity}, ${humidityInSideHouse}`);
 
     // add data to firebase
-    await addData(today, millisecond, temp, humidity, humidityInSideHouse);
-    await handleWaterVolumeToday();
+    await addData(topic, today, millisecond, temp, humidity, humidityInSideHouse);
+    await handleWaterVolumeToday(topic);
     listenToSensorData(sendDataToClient);
 });
 
