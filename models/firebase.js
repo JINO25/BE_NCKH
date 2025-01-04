@@ -54,8 +54,8 @@ exports.addData = async (currentTime, millisecond, temp, humd, humidityInSideHou
 }
 
 exports.addDataWaterVolume = async (humd, waterVolume05, waterVolume085, waterVolume06, millisecond) => {
-    // const date = new Date();
-    // const today = new Date(date.getTime());
+    const date = new Date();
+    const today = new Date(date.getTime());
     await addDoc(collection(firebaseStore.db, "waterVolume"), {
         humd,
         waterVolume: {
