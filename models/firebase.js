@@ -1,9 +1,11 @@
 const firebaseStore = require('../config/config_firebase');
 const { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, getDocs, getDoc, where, doc, updateDoc, deleteDoc } = require('firebase/firestore');
 const date = new Date();
-const today = new Date(date.getTime());
+let today = new Date(date.getTime() + 7 * 60 * 60 * 1000);
 
-console.log('today in firebase: ', today);
+let current = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+
+console.log('today in firebase: ', today, current);
 
 
 exports.addUser = async (name, email) => {
@@ -68,7 +70,7 @@ exports.addDataWaterVolume = async (humd, waterVolume05, waterVolume085, waterVo
 
 
 exports.listenToSensorData = (callback) => {
-    const current = new Date();
+    // const current = new Date();
     const sensorRef = collection(firebaseStore.db, "waterVolume");
 
     const q = query(sensorRef, where('timestamp', '==', current.toDateString()), orderBy('millisecond', 'desc'));
@@ -82,7 +84,7 @@ exports.listenToSensorData = (callback) => {
 }
 
 exports.getDataFromSensorData = async () => {
-    const current = new Date();
+    // const current = new Date();
     console.log('current time in firebase: ', current);
 
     const sensorRef = collection(firebaseStore.db, "sensor");
@@ -98,7 +100,7 @@ exports.getDataFromSensorData = async () => {
 }
 
 exports.getDataFromWaterVolume = async () => {
-    const current = new Date();
+    // const current = new Date();
     const sensorRef = collection(firebaseStore.db, "waterVolume");
 
     const q = query(sensorRef, where('timestamp', '==', current.toDateString()), orderBy('millisecond', 'desc'));
@@ -123,7 +125,7 @@ exports.addDataForWeather7days = async (maxTemp, minTemp, icon, temp, date) => {
         icon,
         temp,
         date,
-        currentTime: currentTime,
+        currentTime: current,
         timestamp: today.toLocaleDateString()
     });
 }
@@ -141,7 +143,7 @@ exports.addDataForWeatherToday = async (maxTemp, minTemp, temp, icon, humidity, 
         humidity,
         solar,
         titleOfWeather,
-        currentTime: currentTime,
+        currentTime: current,
         timestamp: today.toLocaleDateString()
     });
 

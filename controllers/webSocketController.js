@@ -35,7 +35,7 @@ client.on('message', async function (topic, message) {
 
     // const today = date.substring(16, date.lastIndexOf("GMT"));
     const today = VN.substring(VN.lastIndexOf(",") + 1, VN.lastIndexOf("GMT")).trim();
-    console.log(today);
+    // console.log(today);
 
 
     if (time === lastTimestamp) {
