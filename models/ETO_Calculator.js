@@ -548,13 +548,15 @@ const getSolar = async () => {
     let data = await firebaseStore.getWeatherToday();
     const currentTime = new Date().getTime();
 
+    console.log('solar from weahter: ', data.solar);
+
     //If data = null, then will call a new api to get weather for today
     if (data == null) {
         console.log('Call new api weather ');
         await callApiWeather();
         data = await firebaseStore.getWeatherToday();
 
-    } else if (currentTime - data.currentTime > 60 * 60 * 1000) {
+    } else if (currentTime - data.currentTime > 55 * 60 * 1000) {
 
         console.log("Call Api after timing greater than 60 minutes");
         await callApiWeather();
