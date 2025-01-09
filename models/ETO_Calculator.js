@@ -504,7 +504,7 @@ function calculateETo(Ra, R_s, RH_hr, T_hr, u_2, Z) {
     return ETo < 0 ? Math.abs(ETo) : ETo; // Trả về ETo (mm/ngày)  
 }
 
-function WatToJun(ghi) {
+async function WatToJun(ghi) {
     return ghi * 0.0864 / 24; //W/m^2 => MJ m-2
 }
 
@@ -564,7 +564,9 @@ const getSolar = async () => {
     }
 
     const solar = WatToJun(data.solar);
-    console.log('solar: ', solar);
+    if (solar != 0) {
+        console.log('solar: ', solar);
+    }
 
     return solar;
 

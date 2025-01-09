@@ -169,16 +169,6 @@ exports.getHome = catchAsync(async (req, res) => {
     //mặc định tính với diện tích 500 và kc 0.85 nếu người dùng không yêu cầu
     const predictWaterVolume = await calculateWaterVolumes(500);
 
-    // const user = req.user;
-
-    // if (user) {
-    //     const rs = await firebaseStore.getAllGardens(user);
-    //     let data = rs.reverse();
-    //     console.log(data[0]);
-
-
-    // }
-
     let humd = dataFromWaterVolume.map(doc => doc.humd);
     let millisecond = dataFromWaterVolume.map(doc => doc.millisecond);
 
