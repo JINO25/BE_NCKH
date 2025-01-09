@@ -504,7 +504,7 @@ function calculateETo(Ra, R_s, RH_hr, T_hr, u_2, Z) {
     return ETo < 0 ? Math.abs(ETo) : ETo; // Trả về ETo (mm/ngày)  
 }
 
-async function WatToJun(ghi) {
+function WatToJun(ghi) {
     return ghi * 0.0864 / 24; //W/m^2 => MJ m-2
 }
 
