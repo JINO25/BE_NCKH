@@ -548,7 +548,11 @@ const getSolar = async () => {
     let data = await firebaseStore.getWeatherToday();
     const currentTime = new Date().getTime();
 
-    console.log('solar from weahter: ', data.solar);
+    if (!data.solar) {
+        console.log('Chua co solar hom nay');
+    } else {
+        console.log('solar from weahter: ', data.solar);
+    }
 
     //If data = null, then will call a new api to get weather for today
     if (data == null) {
@@ -564,7 +568,7 @@ const getSolar = async () => {
     }
 
     const solar = WatToJun(data.solar);
-    if (solar != 0) {
+    if (solar) {
         console.log('solar: ', solar);
     }
 
