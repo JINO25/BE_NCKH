@@ -15,13 +15,14 @@ client.on('message', async function (topic, message) {
 
     // const date = new Date(parseInt(time, 10) * 1000).toString();
     const date = new Date(parseInt(time, 10) * 1000);
+    const timestamp = new Date();
 
-    const startOfDay = new Date(date);
+    const startOfDay = new Date(timestamp);
     startOfDay.setHours(5, 0, 0, 0); // 5:00 AM
 
-    const endOfDay = new Date(date);
+    const endOfDay = new Date(timestamp);
     endOfDay.setHours(16, 30, 0, 0); // 4:30 PM
-    console.log('time now: ', date.toLocaleTimeString());
+    console.log('time now: ', timestamp.toTimeString());
 
 
     if (date < startOfDay || date > endOfDay) {
@@ -61,9 +62,9 @@ client.on('message', async function (topic, message) {
     console.log(`Dữ liệu mới: ${temp}, ${humidity}, ${humidityInSideHouse}`);
 
     // add data to firebase
-    await addData(today, millisecond, temp, humidity, humidityInSideHouse);
-    await handleWaterVolumeToday();
-    listenToSensorData(sendDataToClient);
+    // await addData(today, millisecond, temp, humidity, humidityInSideHouse);
+    // await handleWaterVolumeToday();
+    // listenToSensorData(sendDataToClient);
 });
 
 //Send data to frontend
