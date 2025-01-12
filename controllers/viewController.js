@@ -89,9 +89,12 @@ exports.getHome = catchAsync(async (req, res) => {
     const dataWeatherToday = await firebaseStore.getWeatherToday();
     const dataWeather7days = await firebaseStore.getWeather7days();
     const dataFromWaterVolume = await firebaseStore.getDataFromWaterVolume();
+    const dataWaterVolumeYesterday = await firebaseStore.getWaterDataFromYesterday();
 
     let ETcOfWater = [];
     let waterVolume = [];
+    let ETcOfWaterYesterday = [];
+    let waterVolumeYesterday = [];
 
     // nếu có yêu cầu tính với diện tích và kc chỉ định
     if (req.query.kc || req.query.area) {
@@ -104,18 +107,23 @@ exports.getHome = catchAsync(async (req, res) => {
         switch (parseFloat(kc)) {
             case 0:
                 ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
+                ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_085);
                 break;
             case 0.5:
                 ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_05);
+                ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_05);
                 break;
             case 0.85:
                 ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
+                ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_085);
                 break;
             case 0.6:
                 ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_06);
+                ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_06);
                 break;
             default:
                 ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
+                ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_085);
                 break;
         }
 
@@ -127,9 +135,15 @@ exports.getHome = catchAsync(async (req, res) => {
             let humd = dataFromWaterVolume.map(doc => doc.humd);
             let millisecond = dataFromWaterVolume.map(doc => doc.millisecond);
 
+            let millisecondYesterday = dataWaterVolumeYesterday.map(doc => doc.millisecond);
+
             ETcOfWater.forEach((el) => {
                 waterVolume.push(calculateCurrentWaterVolume(el, area));
-            })
+            });
+
+            ETcOfWaterYesterday.forEach((el) => {
+                waterVolumeYesterday.push(calculateCurrentWaterVolume(el, area));
+            });
 
             return res.status(200).json({
                 data: {
@@ -137,8 +151,10 @@ exports.getHome = catchAsync(async (req, res) => {
                     predictWaterVolume,
                     dataFromWaterVolume: {
                         waterVolume,
+                        waterVolumeYesterday,
                         humd,
-                        millisecond
+                        millisecond,
+                        millisecondYesterday
                     }
                 }
             });
@@ -149,9 +165,15 @@ exports.getHome = catchAsync(async (req, res) => {
         let humd = dataFromWaterVolume.map(doc => doc.humd);
         let millisecond = dataFromWaterVolume.map(doc => doc.millisecond);
 
+        let millisecondYesterday = dataWaterVolumeYesterday.map(doc => doc.millisecond);
+
         ETcOfWater.forEach((el) => {
             waterVolume.push(calculateCurrentWaterVolume(el, 500));
-        })
+        });
+
+        ETcOfWaterYesterday.forEach((el) => {
+            waterVolumeYesterday.push(calculateCurrentWaterVolume(el, 500));
+        });
 
         return res.status(200).json({
             data: {
@@ -159,8 +181,10 @@ exports.getHome = catchAsync(async (req, res) => {
                 predictWaterVolume,
                 dataFromWaterVolume: {
                     waterVolume,
+                    waterVolumeYesterday,
                     humd,
-                    millisecond
+                    millisecond,
+                    millisecondYesterday
                 }
             }
         });
@@ -172,11 +196,19 @@ exports.getHome = catchAsync(async (req, res) => {
     let humd = dataFromWaterVolume.map(doc => doc.humd);
     let millisecond = dataFromWaterVolume.map(doc => doc.millisecond);
 
+    let millisecondYesterday = dataWaterVolumeYesterday.map(doc => doc.millisecond);
+
+
     ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
+    ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_085);
 
     ETcOfWater.forEach((el) => {
         waterVolume.push(calculateCurrentWaterVolume(el, 500));
-    })
+    });
+
+    ETcOfWaterYesterday.forEach((el) => {
+        waterVolumeYesterday.push(calculateCurrentWaterVolume(el, 500));
+    });
 
     return res.status(200).json({
         status: 'success',
@@ -187,8 +219,10 @@ exports.getHome = catchAsync(async (req, res) => {
             predictWaterVolume,
             dataFromWaterVolume: {
                 waterVolume,
+                waterVolumeYesterday,
                 humd,
-                millisecond
+                millisecond,
+                millisecondYesterday
             }
         }
     });

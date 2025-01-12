@@ -16,6 +16,17 @@ client.on('message', async function (topic, message) {
     // const date = new Date(parseInt(time, 10) * 1000).toString();
     const date = new Date(parseInt(time, 10) * 1000);
 
+    const startOfDay = new Date(date);
+    startOfDay.setHours(5, 0, 0, 0); // 5:00 AM
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(16, 30, 0, 0); // 4:30 PM
+
+    if (date < startOfDay || date > endOfDay) {
+        console.log('Data is outside the time range (5:00 AM - 4:30 PM). Skipping.');
+        return;
+    }
+
     const millisecond = time * 1000;
 
     const options = {

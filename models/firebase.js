@@ -102,12 +102,31 @@ exports.getDataFromSensorData = async () => {
     return data;
 }
 
+exports.getWaterDataFromYesterday = async () => {
+    const date = new Date();
+    // Get yesterday's date
+    const yesterday = new Date(date.getTime());
+    yesterday.setDate(yesterday.getDate() - 1);
+    console.log('Yesterday\'s date in Firebase: ', yesterday);
+
+    const waterVolumeRef = collection(firebaseStore.db, "waterVolume");
+
+    const q = query(waterVolumeRef, where('timestamp', '==', yesterday.toDateString()), orderBy('millisecond', 'desc'));
+    let data = [];
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach(doc => {
+        data.push(doc.data())
+    })
+
+    return data.reverse();
+};
+
 exports.getDataFromWaterVolume = async () => {
     const date = new Date();
     const current = new Date(date.getTime());
-    const sensorRef = collection(firebaseStore.db, "waterVolume");
+    const waterVolumeRef = collection(firebaseStore.db, "waterVolume");
 
-    const q = query(sensorRef, where('timestamp', '==', current.toDateString()), orderBy('millisecond', 'desc'));
+    const q = query(waterVolumeRef, where('timestamp', '==', current.toDateString()), orderBy('millisecond', 'desc'));
     let data = [];
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach(doc => {
