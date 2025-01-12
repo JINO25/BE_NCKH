@@ -21,6 +21,8 @@ client.on('message', async function (topic, message) {
 
     const endOfDay = new Date(date);
     endOfDay.setHours(16, 30, 0, 0); // 4:30 PM
+    console.log('time now: ', date.toLocaleTimeString());
+
 
     if (date < startOfDay || date > endOfDay) {
         console.log('Data is outside the time range (5:00 AM - 4:30 PM). Skipping.');
