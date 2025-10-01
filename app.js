@@ -24,8 +24,10 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
+      "http://localhost:5173",
       "http://127.0.0.1:5502",
       "http://127.0.0.1:5504",
+      "http://127.0.0.1:5173",
     ],
     credentials: true,
   })
@@ -52,20 +54,59 @@ const fontSrcUrls = [
   "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/",
 ];
 
-if (process.env.ENV === "development") {
-  app.use(helmet({ contentSecurityPolicy: false }));
-} else {
-  app.use(
+// if (process.env.ENV === "development") {
+//   app.use(helmet({ contentSecurityPolicy: false }));
+// } else {
+//   app.use(
+//     helmet.contentSecurityPolicy({
+//       directives: {
+//         defaultSrc: [
+//           "'self'",
+//           "http://127.0.0.1:5500/*",
+//           "http://127.0.0.1:5173",
+//           "https://localhost:5500",
+//         ],
+//         connectSrc: [
+//           "'self'",
+//           "http://127.0.0.1:5500",
+//           "http://127.0.0.1:5173",
+//           "http://localhost:5500",
+//           "ws://127.0.0.1:5500/",
+//           `ws://localhost:5500/`,
+//           "https://maps.googleapis.com",
+//         ],
+//         scriptSrc: [
+//           "'self'",
+//           "'nonce-yourNonce'",
+//           "'sha256-ajGjo5eD0JzFPdnpuutKT6Sb5gLu+Q9ru594rwJogGQ='",
+//           "'unsafe-eval'",
+//           ...scriptSrcUrls,
+//         ],
+//         styleSrc: styleSrcUrls,
+//         fontSrc: fontSrcUrls,
+//         imgSrc: ["'self'", "blob:", "data:", "https:"],
+//         frameSrc: ["'self'"],
+//         objectSrc: ["'none'"],
+//         workerSrc: ["'self'", "blob:"],
+//         childSrc: ["'self'", "blob:"],
+//         upgradeInsecureRequests: [],
+//       },
+//     })
+//   );
+// }
+app.use(
     helmet.contentSecurityPolicy({
       directives: {
         defaultSrc: [
           "'self'",
           "http://127.0.0.1:5500/*",
+          "http://127.0.0.1:5173",
           "https://localhost:5500",
         ],
         connectSrc: [
           "'self'",
           "http://127.0.0.1:5500",
+          "http://127.0.0.1:5173",
           "http://localhost:5500",
           "ws://127.0.0.1:5500/",
           `ws://localhost:5500/`,
@@ -89,8 +130,6 @@ if (process.env.ENV === "development") {
       },
     })
   );
-}
-
 // handleWaterVolumeToday()
 
 app.use("/api/view", viewRouter);
