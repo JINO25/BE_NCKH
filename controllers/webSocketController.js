@@ -1,10 +1,12 @@
-const wss = require('../config/webSocket');  // Đảm bảo bạn chỉ import WebSocket Server
-const client = require('../config/mqtt');    // Import MQTT client đã được khởi tạo trong mqtt.js
+const wss = require('../config/webSocket');  
+const client = require('../config/mqtt');    
 const { addData, listenToSensorData, getDataFromSensorData } = require('../models/firebase');
 const { handleWaterVolumeToday } = require('../models/ETO_Calculator');
 const { DateTime } = require('luxon');
 
 let lastTimestamp = 0;
+
+listenToSensorData(sendDataToClient);
 
 client.on('message', async function (topic, message) {
     let data = message.toString();
@@ -14,7 +16,6 @@ client.on('message', async function (topic, message) {
     let humidity = split[3];
     let humidityInSideHouse = split[4];
 
-    // const date = new Date(parseInt(time, 10) * 1000).toString();
     const date = new Date(parseInt(time, 10) * 1000);
     const timestamp = DateTime.now().setZone('Asia/Ho_Chi_Minh');
 
@@ -49,7 +50,6 @@ client.on('message', async function (topic, message) {
     const VN = new Intl.DateTimeFormat('en-US', options).format(date);
 
 
-    // const today = date.substring(16, date.lastIndexOf("GMT"));
     const today = VN.substring(VN.lastIndexOf(",") + 1, VN.lastIndexOf("GMT")).trim();
     // console.log(today);
 
@@ -62,13 +62,10 @@ client.on('message', async function (topic, message) {
     lastTimestamp = time;
     console.log(`Dữ liệu mới: ${temp}, ${humidity}, ${humidityInSideHouse}`);
 
-    // add data to firebase
     await addData(today, millisecond, temp, humidity, humidityInSideHouse);
     await handleWaterVolumeToday();
-    listenToSensorData(sendDataToClient);
 });
 
-//Send data to frontend
 function sendDataToClient(data) {
     console.log('Sending data to WebSocket clients');
 

@@ -1,7 +1,9 @@
 const firebaseStore = require('../models/firebase');
 const weather = require('../config/config_weather');
 const catchAsync = require('../middlewares/catchAsync');
-const { calculateWaterVolumes, handleWaterVolumeToday, handleWaterVolumeTodayForKcSelected, calculateCurrentWaterVolume } = require('../models/ETO_Calculator');
+// const { calculateWaterVolumes, handleWaterVolumeToday, handleWaterVolumeTodayForKcSelected, calculateCurrentWaterVolume } = require('../models/ETO_Calculator');
+const { getKcForDate, calculateCurrentWaterVolume, calculateWaterVolumes, calculateWaterVolumesDynamic } = require('../models/ETO_Calculator');
+
 
 exports.callApiWeather = async (req, res) => {
     const currentTime = new Date().toLocaleDateString();
@@ -85,129 +87,76 @@ function predictWeather7days(data) {
     firebaseStore.addDataForWeather7days(highTemp7Days, lowTemp7Days, iconWeather, temp, datetime);
 }
 
+//mô tả: lấy dữ liệu cho trang home (dashboard)
 exports.getHome = catchAsync(async (req, res) => {
+    const { gardenId, kc, area } = req.query;
+
     const dataWeatherToday = await firebaseStore.getWeatherToday();
     const dataWeather7days = await firebaseStore.getWeather7days();
-    const dataFromWaterVolume = await firebaseStore.getDataFromWaterVolume();
-    const dataWaterVolumeYesterday = await firebaseStore.getWaterDataFromYesterday();
+    const dataFromWaterVolumeRaw = await firebaseStore.getDataFromWaterVolume();
+    const dataWaterVolumeYesterdayRaw = await firebaseStore.getWaterDataFromYesterday();
 
-    let ETcOfWater = [];
-    let waterVolume = [];
-    let ETcOfWaterYesterday = [];
-    let waterVolumeYesterday = [];
+    // Xác định area và kcNow (từ season/crop)
+    let areaToUse = area ? Number(area) : 1000;
+    let kcNow = 0.85;
+    let stageInfo = null;
 
-    // nếu có yêu cầu tính với diện tích và kc chỉ định
-    if (req.query.kc || req.query.area) {
-        const kc = req.query.kc;
-        const area = req.query.area;
+    if (gardenId) {
+        const garden = await firebaseStore.getGardenById(req.user, gardenId);
+        if (garden?.area) areaToUse = Number(garden.area);
 
-        console.log(area);
-
-
-        switch (parseFloat(kc)) {
-            case 0:
-                ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
-                ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_085);
-                break;
-            case 0.5:
-                ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_05);
-                ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_05);
-                break;
-            case 0.85:
-                ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
-                ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_085);
-                break;
-            case 0.6:
-                ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_06);
-                ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_06);
-                break;
-            default:
-                ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
-                ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_085);
-                break;
+        const seasons = await firebaseStore.getSeasons(req.user, gardenId);
+        const now = Date.now();
+        const active = seasons.find(s => now >= s.startDate && now <= s.endDate);
+        if (active) {
+            const crop = await firebaseStore.getCropById(req.user, active.cropId);
+            const sInfo = getKcForDate(crop, active.startDate, now);
+            kcNow = sInfo.kc;
+            stageInfo = { ...sInfo, cropName: crop?.name || '' };
         }
-
-        //tính với diện tích và kc chỉ định
-        if (area != null && area != '' && area != ' ') {
-
-            const predictWaterVolume = await calculateWaterVolumes(area, kc);
-
-            let humd = dataFromWaterVolume.map(doc => doc.humd);
-            let millisecond = dataFromWaterVolume.map(doc => doc.millisecond);
-
-            let millisecondYesterday = dataWaterVolumeYesterday.map(doc => doc.millisecond);
-
-            ETcOfWater.forEach((el) => {
-                waterVolume.push(calculateCurrentWaterVolume(el, area));
-            });
-
-            ETcOfWaterYesterday.forEach((el) => {
-                waterVolumeYesterday.push(calculateCurrentWaterVolume(el, area));
-            });
-
-            return res.status(200).json({
-                data: {
-                    dataWeather7days,
-                    predictWaterVolume,
-                    dataFromWaterVolume: {
-                        waterVolume,
-                        waterVolumeYesterday,
-                        humd,
-                        millisecond,
-                        millisecondYesterday
-                    }
-                }
-            });
-        }
-
-        //không có diện tích thì mặc định sẽ tính với diện tích là 500 m2
-        const predictWaterVolume = await calculateWaterVolumes(500, kc);
-        let humd = dataFromWaterVolume.map(doc => doc.humd);
-        let millisecond = dataFromWaterVolume.map(doc => doc.millisecond);
-
-        let millisecondYesterday = dataWaterVolumeYesterday.map(doc => doc.millisecond);
-
-        ETcOfWater.forEach((el) => {
-            waterVolume.push(calculateCurrentWaterVolume(el, 500));
-        });
-
-        ETcOfWaterYesterday.forEach((el) => {
-            waterVolumeYesterday.push(calculateCurrentWaterVolume(el, 500));
-        });
-
-        return res.status(200).json({
-            data: {
-                dataWeather7days,
-                predictWaterVolume,
-                dataFromWaterVolume: {
-                    waterVolume,
-                    waterVolumeYesterday,
-                    humd,
-                    millisecond,
-                    millisecondYesterday
-                }
-            }
-        });
+    } else if (kc) {
+        kcNow = Number(kc) || 0.85;
     }
 
-    //mặc định tính với diện tích 500 và kc 0.85 nếu người dùng không yêu cầu
-    const predictWaterVolume = await calculateWaterVolumes(500);
+    // Dự báo 7 ngày: nếu có season -> Kc động theo từng ngày
+    let predictWaterVolume = [];
+    if (gardenId && stageInfo) {
+        const seasons = await firebaseStore.getSeasons(req.user, gardenId);
+        const active = seasons.find(s => Date.now() >= s.startDate && Date.now() <= s.endDate);
+        const crop = active ? await firebaseStore.getCropById(req.user, active.cropId) : null;
+        const kcList = [];
+        if (crop && active) {
+            for (let i = 0; i < 7; i++) {
+                const dayMs = Date.now() + i * 24 * 60 * 60 * 1000;
+                kcList.push(getKcForDate(crop, active.startDate, dayMs).kc);
+            }
+            predictWaterVolume = await calculateWaterVolumesDynamic(areaToUse, kcList);
+        }
+        if (predictWaterVolume.length === 0) {
+            predictWaterVolume = await calculateWaterVolumes(areaToUse, kcNow);
+        }
+    } else {
+        predictWaterVolume = await calculateWaterVolumes(areaToUse, kcNow);
+    }
 
-    let humd = dataFromWaterVolume.map(doc => doc.humd);
-    let millisecond = dataFromWaterVolume.map(doc => doc.millisecond);
+    // Xử lý dữ liệu nước hôm nay và hôm qua
+    const humd = dataFromWaterVolumeRaw.map(doc => doc.humd);
+    const millisecond = dataFromWaterVolumeRaw.map(doc => doc.millisecond);
+    const millisecondYesterday = dataWaterVolumeYesterdayRaw.map(doc => doc.millisecond);
 
-    let millisecondYesterday = dataWaterVolumeYesterday.map(doc => doc.millisecond);
-
-
-    ETcOfWater = dataFromWaterVolume.map(doc => doc.waterVolume.kc_085);
-    ETcOfWaterYesterday = dataWaterVolumeYesterday.map(doc => doc.waterVolume.kc_085);
-
-    ETcOfWater.forEach((el) => {
-        waterVolume.push(calculateCurrentWaterVolume(el, 500));
+    // Nếu ETo có sẵn -> ETc = ETo * kcNow; nếu không có, suy ra từ kc_085
+    const waterVolume = dataFromWaterVolumeRaw.map(doc => {
+        const maybeETo = doc.ETo ?? (doc.waterVolume?.kc_085 ? doc.waterVolume.kc_085 / 0.85 : null);
+        if (maybeETo == null) return 0;
+        const ETc = maybeETo * kcNow;
+        return calculateCurrentWaterVolume(ETc, areaToUse);
     });
 
-    ETcOfWaterYesterday.forEach((el) => {
-        waterVolumeYesterday.push(calculateCurrentWaterVolume(el, 500));
+    const waterVolumeYesterday = dataWaterVolumeYesterdayRaw.map(doc => {
+        const maybeETo = doc.ETo ?? (doc.waterVolume?.kc_085 ? doc.waterVolume.kc_085 / 0.85 : null);
+        if (maybeETo == null) return 0;
+        const ETc = maybeETo * kcNow;
+        return calculateCurrentWaterVolume(ETc, areaToUse);
     });
 
     return res.status(200).json({
@@ -216,6 +165,7 @@ exports.getHome = catchAsync(async (req, res) => {
         data: {
             dataWeatherToday,
             dataWeather7days,
+            stageInfo, // FE hiển thị giai đoạn + kc hiện tại
             predictWaterVolume,
             dataFromWaterVolume: {
                 waterVolume,
@@ -230,7 +180,7 @@ exports.getHome = catchAsync(async (req, res) => {
 
 exports.getDataForChar = catchAsync(async (req, res) => {
     const kc = req.query.kc;
-    const predictWaterVolume = await calculateWaterVolumes(500, kc);
+    const predictWaterVolume = await calculateWaterVolumes(1000, kc);
     const dataFromWaterVolume = await firebaseStore.getDataFromWaterVolume();
 
     res.status(200).json({
@@ -239,7 +189,6 @@ exports.getDataForChar = catchAsync(async (req, res) => {
             dataFromWaterVolume
         }
     });
-
 })
 
 exports.addDataWeatherToday = catchAsync(async (req, res) => {
@@ -415,3 +364,31 @@ exports.deleteGardenInfo = catchAsync(async (req, res) => {
         })
     }
 })
+
+// lấy danh sách vườn có mùa vụ đang hoạt động để hiển thị trên dashboard
+exports.getDashboardGardens = catchAsync(async (req, res) => {
+    const activeSeasons = await firebaseStore.getActiveSeasons(req.user);
+    const gardens = await firebaseStore.getAllGardens(req.user);
+    const activeGardenIds = new Set(activeSeasons.map(s => s.gardenId));
+    const list = gardens
+        .filter(g => activeGardenIds.has(g.id))
+        .map(g => ({ id: g.id, nameGarden: g.nameGarden, area: g.area }));
+    res.status(200).json({ status: 'success', data: list });
+});
+
+exports.seedWaterVolume = async (req, res) => {
+    await firebaseStore.seedWaterVolumeForToday();
+    res.status(201).json({ status: 'success' });
+};
+
+exports.getGardenById = catchAsync(async (req, res) => {
+    const user = req.user;
+    const { id } = req.params;
+    if (!user) return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    if (!id) return res.status(400).json({ status: 'fail', message: 'Thiếu id' });
+
+    const data = await firebaseStore.getGardenById(user, id);
+    if (!data) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy vườn' });
+
+    return res.status(200).json({ status: 'success', data });
+});

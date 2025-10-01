@@ -53,9 +53,25 @@ exports.addData = async (currentTime, millisecond, temp, humd, humidityInSideHou
     });
 }
 
-exports.addDataWaterVolume = async (humd, waterVolume05, waterVolume085, waterVolume06, millisecond) => {
-    const date = new Date();
-    const today = new Date(date.getTime());
+// hàm thứ 1
+// exports.addDataWaterVolume = async (humd, waterVolume05, waterVolume085, waterVolume06, millisecond) => {
+//     const date = new Date();
+//     const today = new Date(date.getTime());
+//     await addDoc(collection(firebaseStore.db, "waterVolume"), {
+//         humd,
+//         waterVolume: {
+//             "kc_05": waterVolume05,
+//             "kc_085": waterVolume085,
+//             "kc_06": waterVolume06
+//         },
+//         millisecond,
+//         timestamp: today.toDateString()
+//     });
+// }
+
+// hàm thứ 2
+exports.addDataWaterVolume = async (humd, waterVolume05, waterVolume085, waterVolume06, millisecond, extras = {}) => {
+    const today = new Date();
     await addDoc(collection(firebaseStore.db, "waterVolume"), {
         humd,
         waterVolume: {
@@ -63,10 +79,11 @@ exports.addDataWaterVolume = async (humd, waterVolume05, waterVolume085, waterVo
             "kc_085": waterVolume085,
             "kc_06": waterVolume06
         },
+        ETo: extras.ETo ?? null,
         millisecond,
         timestamp: today.toDateString()
     });
-}
+};
 
 
 exports.listenToSensorData = (callback) => {
@@ -102,39 +119,28 @@ exports.getDataFromSensorData = async () => {
     return data;
 }
 
+
 exports.getWaterDataFromYesterday = async () => {
-    const date = new Date();
-    // Get yesterday's date
-    const yesterday = new Date(date.getTime());
-    yesterday.setDate(yesterday.getDate() - 1);
-    console.log('Yesterday\'s date in Firebase: ', yesterday);
-
+    const y = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
     const waterVolumeRef = collection(firebaseStore.db, "waterVolume");
-
-    const q = query(waterVolumeRef, where('timestamp', '==', yesterday.toDateString()), orderBy('millisecond', 'desc'));
-    let data = [];
+    const q = query(waterVolumeRef, where('timestamp', '==', y), orderBy('millisecond', 'desc'));
     const querySnapshot = await getDocs(q);
-    querySnapshot.forEach(doc => {
-        data.push(doc.data())
-    })
-
+    const data = [];
+    querySnapshot.forEach(doc => data.push(doc.data()));
     return data.reverse();
 };
 
+
 exports.getDataFromWaterVolume = async () => {
-    const date = new Date();
-    const current = new Date(date.getTime());
+    const today = new Date().toDateString();
     const waterVolumeRef = collection(firebaseStore.db, "waterVolume");
-
-    const q = query(waterVolumeRef, where('timestamp', '==', current.toDateString()), orderBy('millisecond', 'desc'));
-    let data = [];
+    const q = query(waterVolumeRef, where('timestamp', '==', today), orderBy('millisecond', 'desc'));
     const querySnapshot = await getDocs(q);
-    querySnapshot.forEach(doc => {
-        data.push(doc.data())
-    })
+    const data = [];
+    querySnapshot.forEach(doc => data.push(doc.data()));
+    return data.reverse();
+};
 
-    return data.reverse()
-}
 
 
 exports.addDataForWeather7days = async (maxTemp, minTemp, icon, temp, date) => {
@@ -251,20 +257,25 @@ exports.addGarden = async (user, nameGarden, typeGarden, method, area, note, lat
 exports.getAllGardens = async (user) => {
     const userID = await this.findUser(user.email)
     let data = [];
-
     const q = query(collection(firebaseStore.db, "garden"), where("user", "==", userID.id), orderBy("timestamp", "desc"));
-    // const q = query(collection(firebaseStore.db, "garden"), where("user", "==", userID.id));
-
     const querySnapshot = await getDocs(q);
 
-    querySnapshot.forEach((doc) => {
-        data.push(doc.data())
+    querySnapshot.forEach((docSnap) => {
+        data.push({ id: docSnap.id, ...docSnap.data() });
     });
+
 
     (data == null) ? data = null : data = data;
 
     return data;
 }
+
+
+exports.getGardenById = async (user, id) => {
+    const ref = doc(firebaseStore.db, 'garden', id);
+    const snap = await getDoc(ref);
+    return snap.exists() ? ({ id: snap.id, ...snap.data() }) : null;
+};
 
 exports.getAllGardenByName = async (user, name) => {
     const userID = await this.findUser(user.email)
@@ -304,9 +315,7 @@ exports.updateGarden = async (user, name, updates) => {
 
 
         const q = query(collection(firebaseStore.db, "garden"), where("user", "==", userID.id), where("nameGarden", "==", name));
-
         const querySnapshot = await getDocs(q);
-
         let gardenID;
 
         querySnapshot.forEach((doc) => {
@@ -331,9 +340,7 @@ exports.deleteGarden = async (user, nameGarden) => {
 
     try {
         const q = query(collection(firebaseStore.db, "garden"), where("user", "==", userID.id), where("nameGarden", "==", nameGarden));
-
         const querySnapshot = await getDocs(q);
-
         let gardenID;
 
         querySnapshot.forEach((doc) => {
@@ -348,3 +355,190 @@ exports.deleteGarden = async (user, nameGarden) => {
     }
 }
 
+exports.seedWaterVolumeForToday = async () => {
+    const now = new Date();
+    const dayStr = now.toDateString(); 
+    const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0, 0); // 7:00 AM
+
+    // 10 mốc giờ 7:00 -> 16:00
+    const kc05 = [0.2, 0, 0.2, 0.2, 0.4, 0.4, 0.2, 0.2, 0.2, 0.2];
+    const kc085 = [0.35, 0, 0.35, 0.35, 0.6, 0.6, 0.35, 0.35, 0.35, 0.35];
+    const kc06 = [0.25, 0, 0.25, 0.25, 0.45, 0.45, 0.25, 0.25, 0.25, 0.25];
+    const humd = [62, 63, 64, 63, 66, 68, 65, 64, 63, 62];
+
+    for (let i = 0; i < 10; i++) {
+        await addDoc(collection(firebaseStore.db, "waterVolume"), {
+        humd: humd[i],
+        waterVolume: { kc_05: kc05[i], kc_085: kc085[i], kc_06: kc06[i] }, // ETc (mm/h)
+        millisecond: base.getTime() + i * 60 * 60 * 1000,
+        timestamp: dayStr
+        });
+    }
+};
+
+// ========== CROP TYPE ==========
+
+async function resolveUserId(user) {
+    try {
+    if (user && user.email) {
+        const u = await module.exports.findUser(user.email);
+        return u?.id || null;
+    }
+    } catch (e) {
+        console.error('resolveUserId error:', e);
+    }
+    return null;
+}
+
+exports.addCropType = async (user, payload) => {
+    const userID = await this.findUser(user.email);
+    const docRef = await addDoc(collection(firebaseStore.db, 'cropType'), {
+        ...payload,
+        user: userID.id,
+        timestamp: serverTimestamp()
+    });
+    return docRef.id;
+};
+
+exports.getCropTypes = async (user) => {
+    const userID = await this.findUser(user.email);
+    const qBase = query(collection(firebaseStore.db, 'cropType'), where('user', '==', userID.id), orderBy('timestamp', 'desc'));
+    const snap = await getDocs(qBase);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+exports.getCropById = async (user, id) => {
+    const ref = doc(firebaseStore.db, 'cropType', id);
+    const snap = await getDoc(ref);
+    return snap.exists() ? ({ id: snap.id, ...snap.data() }) : null;
+};
+
+exports.updateCropType = async (user, id, updates) => {
+    await updateDoc(doc(firebaseStore.db, 'cropType', id), { ...updates });
+    return true;
+};
+
+exports.deleteCropType = async (user, id) => {
+    await deleteDoc(doc(firebaseStore.db, 'cropType', id));
+    return true;
+};
+
+// ========== SEASON ==========
+exports.addSeason = async (user, payload) => {
+    const userID = await resolveUserId(user);
+    // payload: { gardenId, cropId, startDate, endDate? }
+    let endDate = payload.endDate;
+    if (!endDate) {
+        const crop = await this.getCropById(user, payload.cropId);
+        const totalDays = (crop?.daysInit || 0) + (crop?.daysDev || 0) + (crop?.daysMid || 0) + (crop?.daysLate || 0);
+        endDate = payload.startDate + totalDays * 24 * 60 * 60 * 1000;
+    }
+    const docRef = await addDoc(collection(firebaseStore.db, 'season'), {
+        ...payload,
+        endDate,
+        user: userID,
+        status: 'active',
+        timestamp: serverTimestamp()
+    });
+    return docRef.id;
+};
+
+exports.getSeasons = async (user, gardenId) => {
+    const userID = await resolveUserId(user);
+    const colRef = collection(firebaseStore.db, 'season');
+    let qBase;
+    if (userID && gardenId) {
+        qBase = query(colRef, where('user', '==', userID), where('gardenId', '==', gardenId), orderBy('timestamp', 'desc'));
+    } else if (userID) {
+        qBase = query(colRef, where('user', '==', userID), orderBy('timestamp', 'desc'));
+    } else if (gardenId) {
+        qBase = query(colRef, where('gardenId', '==', gardenId), orderBy('timestamp', 'desc'));
+    } else {
+        qBase = query(colRef, orderBy('timestamp', 'desc'));
+    }
+    const snap = await getDocs(qBase);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+exports.getActiveSeasons = async (user) => {
+    const userID = await resolveUserId(user);
+    const now = Date.now();
+    const colRef = collection(firebaseStore.db, 'season');
+    let qBase;
+    if (userID) {
+        qBase = query(colRef, where('user', '==', userID));
+    } else {
+        qBase = query(colRef);
+    }
+    const snap = await getDocs(qBase);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(s => now >= s.startDate && now <= s.endDate);
+};
+
+exports.updateSeason = async (user, id, updates) => {
+    await updateDoc(doc(firebaseStore.db, 'season', id), { ...updates });
+    return true;
+};
+
+exports.deleteSeason = async (user, id) => {
+    await deleteDoc(doc(firebaseStore.db, 'season', id));
+    return true;
+};
+
+// ========== SENSOR META ==========
+exports.addSensorMeta = async (user, payload) => {
+    const userID = await this.findUser(user.email);
+    const data = {
+        name: payload.name,
+        topic: payload.topic || 'Sensor_data',
+        type: payload.type || 'DHT',
+        gardenId: payload.gardenId || null, // null = chưa gắn
+        status: payload.gardenId ? 'online' : 'offline',
+        user: userID.id,
+        timestamp: serverTimestamp()
+    };
+    const docRef = await addDoc(collection(firebaseStore.db, 'sensorMeta'), data);
+    return docRef.id;
+};
+
+exports.getSensorsMeta = async (user, gardenId) => {
+    const userID = await this.findUser(user.email);
+    const colRef = collection(firebaseStore.db, 'sensorMeta');
+    let qBase;
+    if (gardenId) {
+        qBase = query(colRef,
+            where('user', '==', userID.id),
+            where('gardenId', '==', gardenId),
+            orderBy('timestamp', 'desc')
+        );
+    } else {
+        qBase = query(colRef,
+            where('user', '==', userID.id),
+            orderBy('timestamp', 'desc')
+        );
+    }
+    const snap = await getDocs(qBase);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+exports.updateSensorMeta = async (user, id, updates) => {
+    const ref = doc(firebaseStore.db, 'sensorMeta', id);
+    const toUpdate = { ...updates };
+    // Auto status theo gardenId
+    if ('gardenId' in updates) {
+        if (updates.gardenId) {
+            toUpdate.gardenId = updates.gardenId;
+            toUpdate.status = 'online';
+        } else {
+            toUpdate.gardenId = null;
+            toUpdate.status = 'offline';
+        }
+    }
+    await updateDoc(ref, toUpdate);
+    return true;
+};
+
+exports.deleteSensorMeta = async (user, id) => {
+    await deleteDoc(doc(firebaseStore.db, 'sensorMeta', id));
+    return true;
+};
